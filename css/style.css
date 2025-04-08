@@ -1,0 +1,38 @@
+.quote-box {
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.quote-text {
+    font-style: italic;
+    margin-bottom: 1rem;
+}
+
+.quote-author {
+    font-weight: bold;
+    color: #6c757d;
+}
+
+.video-preview-container {
+    position: relative;
+    width: 100%;
+    padding-top: 177.78%; /* 16:9 Aspect Ratio for vertical video */
+    background-color: #000;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.video-preview-container video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Fix for iOS video playback */
+video::-webkit-media-controls {
+    display: flex !important;
+    visibility: visible !important;
+}

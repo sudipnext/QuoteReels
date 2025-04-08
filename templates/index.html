@@ -1,0 +1,595 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-5">
+    <div class="col-md-8 offset-md-2 text-center">
+        <h1 class="display-4 fw-bold mb-3">Turn <span class="gradient-text">Quotes</span> into Stunning <span class="gradient-text">Videos</span></h1>
+        <p class="lead text-secondary mb-4">Create beautiful vertical videos for Instagram Reels, TikTok, and more in seconds</p>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-4">
+        <div class="text-center">
+            <div class="feature-icon mx-auto">
+                <i class="fas fa-magic"></i>
+            </div>
+            <h4>Random Quotes</h4>
+            <p class="text-secondary">Generate videos with randomly selected quotes</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="text-center">
+            <div class="feature-icon mx-auto">
+                <i class="fas fa-edit"></i>
+            </div>
+            <h4>Custom Content</h4>
+            <p class="text-secondary">Add your own quotes and author attribution</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="text-center">
+            <div class="feature-icon mx-auto">
+                <i class="fas fa-download"></i>
+            </div>
+            <h4>Download & Share</h4>
+            <p class="text-secondary">Download high-quality vertical videos for social media</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <div class="card">
+            <div class="card-header bg-white">
+                <ul class="nav nav-tabs card-header-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="random-tab" data-bs-toggle="tab" href="#random">
+                            <i class="fas fa-random me-2"></i>Random Quote
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="custom-tab" data-bs-toggle="tab" href="#custom">
+                            <i class="fas fa-keyboard me-2"></i>Custom Quote
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body p-4">
+                <div class="tab-content">
+                    <!-- Random Quote Tab -->
+                    <div class="tab-pane fade show active" id="random">
+                        <div class="text-center mb-4">
+                            <button class="btn btn-primary btn-lg" id="getRandomQuote">
+                                <i class="fas fa-quote-right me-2"></i>Get Random Quote
+                            </button>
+                        </div>
+                        
+                        <div id="quoteLoading" class="text-center d-none">
+                            <div class="loading-animation">
+                                <div></div>
+                                <div></div>
+                            </div>
+                            <p>Finding the perfect quote...</p>
+                        </div>
+                        
+                        <div id="randomQuoteDisplay" class="d-none">
+                            <div class="quote-box">
+                                <p class="quote-text h4"></p>
+                                <p class="quote-author text-end"></p>
+                            </div>
+                            <div class="d-flex justify-content-center">
+                                <button class="btn btn-success btn-lg" id="generateRandomVideo">
+                                    <i class="fas fa-video me-2"></i>Generate Video
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Quote Tab -->
+                    <div class="tab-pane fade" id="custom">
+                        <form id="customQuoteForm">
+                            <div class="mb-4">
+                                <label for="quote" class="form-label fw-bold">Your Quote</label>
+                                <textarea class="form-control form-control-lg" id="quote" rows="3" placeholder="Enter your favorite quote here..." required></textarea>
+                            </div>
+                            <div class="mb-4">
+                                <label for="author" class="form-label fw-bold">Author</label>
+                                <input type="text" class="form-control form-control-lg" id="author" placeholder="Who said this quote?" required>
+                            </div>
+                            <div class="d-flex justify-content-center">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-video me-2"></i>Generate Video
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Result Modal -->
+<div class="modal fade" id="resultModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-film me-2"></i>Your Video
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Loading State -->
+                <div id="videoLoading" class="text-center">
+                    <div class="loading-animation">
+                        <div></div>
+                        <div></div>
+                    </div>
+                    <h5 class="mt-3" id="processingStatus">Creating your video...</h5>
+                    <p class="text-secondary" id="processingSubStatus">Initializing resources</p>
+                    
+                    <!-- Fancy loading animation -->
+                    <div class="fancy-loader-container mt-4 mb-3">
+                        <div class="fancy-loader">
+                            <div class="fancy-loader-dot dot1"></div>
+                            <div class="fancy-loader-dot dot2"></div>
+                            <div class="fancy-loader-dot dot3"></div>
+                            <div class="fancy-loader-dot dot4"></div>
+                            <div class="fancy-loader-dot dot5"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Processing steps display -->
+                    <div class="mt-3 text-start processing-steps">
+                        <div class="step" id="step1">⏳ 🎥 Finding perfect background video...</div>
+                        <div class="step" id="step2">⏳ 💬 Making your quote look fabulous...</div>
+                        <div class="step" id="step3">⏳ 🌟 Sprinkling visual magic dust...</div>
+                        <div class="step" id="step4">⏳ 📱 Optimizing for social media fame...</div>
+                        <div class="step" id="step5">⏳ 🧙‍♂️ Casting final rendering spells...</div>
+                    </div>
+                </div>
+                
+                <!-- Result Content -->
+                <div id="resultContent" class="d-none">
+                    <div class="row">
+                        <div class="col-md-7">
+                            <div class="video-preview-container">
+                                <video id="previewVideo" controls playsinline>
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <h5 class="mb-3">Video Ready!</h5>
+                            <div class="quote-box mb-4">
+                                <p id="modalQuote" class="h5"></p>
+                                <p id="modalAuthor" class="text-end"></p>
+                            </div>
+                            <div class="d-grid gap-3">
+                                <a href="#" class="btn btn-primary btn-lg btn-download" id="downloadLink">
+                                    <i class="fas fa-download"></i>Download Video
+                                </a>
+                                <button class="btn btn-outline-secondary" id="createAnother" data-bs-dismiss="modal">
+                                    Create Another Video
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentQuote = null;
+
+document.getElementById('getRandomQuote').addEventListener('click', async () => {
+    // Hide quote display if visible
+    document.getElementById('randomQuoteDisplay').classList.add('d-none');
+    
+    // Show loading indicator
+    document.getElementById('quoteLoading').classList.remove('d-none');
+    
+    try {
+        const response = await fetch('/get-random-quote');
+        const data = await response.json();
+        
+        // Hide loading
+        document.getElementById('quoteLoading').classList.add('d-none');
+        
+        if (data.success) {
+            currentQuote = data;
+            const display = document.getElementById('randomQuoteDisplay');
+            display.querySelector('.quote-text').textContent = `"${data.quote}"`;
+            display.querySelector('.quote-author').textContent = `- ${data.author}`;
+            display.classList.remove('d-none');
+        } else {
+            showAlert('Error fetching quote: ' + data.error);
+        }
+    } catch (error) {
+        document.getElementById('quoteLoading').classList.add('d-none');
+        showAlert('Error connecting to server');
+        console.error(error);
+    }
+});
+
+document.getElementById('customQuoteForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const quote = document.getElementById('quote').value;
+    const author = document.getElementById('author').value;
+    currentQuote = { quote, author };
+    
+    showLoadingModal();
+    generateCustomVideo();
+});
+
+document.getElementById('generateRandomVideo').addEventListener('click', () => {
+    if (currentQuote) {
+        showLoadingModal();
+        generateVideo(currentQuote);
+    }
+});
+
+async function generateVideo(quoteData) {
+    try {
+        const response = await fetch('/generate-video', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                quote: quoteData.quote, 
+                author: quoteData.author 
+            })
+        });
+        
+        handleVideoResponse(await response.json(), quoteData);
+    } catch (error) {
+        hideLoadingModal();
+        showAlert('Error generating video');
+        console.error(error);
+    }
+}
+
+async function generateCustomVideo() {
+    try {
+        const response = await fetch('/generate-video-custom', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                quote: currentQuote.quote, 
+                author: currentQuote.author 
+            })
+        });
+        
+        handleVideoResponse(await response.json(), currentQuote);
+    } catch (error) {
+        hideLoadingModal();
+        showAlert('Error generating video');
+        console.error(error);
+    }
+}
+
+function showLoadingModal() {
+    const modal = new bootstrap.Modal(document.getElementById('resultModal'));
+    document.getElementById('videoLoading').classList.remove('d-none');
+    document.getElementById('resultContent').classList.add('d-none');
+    modal.show();
+    startFakeProcessingAnimation();
+}
+
+function hideLoadingModal() {
+    document.getElementById('videoLoading').classList.add('d-none');
+    document.getElementById('resultContent').classList.remove('d-none');
+}
+
+function handleVideoResponse(data, quoteData) {
+    hideLoadingModal();
+    
+    if (data.success) {
+        // Set up video preview with proper URL
+        const previewVideo = document.getElementById('previewVideo');
+        previewVideo.src = `/api/videos/${data.video_path}`;
+        previewVideo.load();
+        previewVideo.play();
+        
+        // Set up quote display in modal
+        document.getElementById('modalQuote').textContent = `"${quoteData.quote}"`;
+        document.getElementById('modalAuthor').textContent = `- ${quoteData.author}`;
+        
+        // Set up download link with download route
+        const downloadLink = document.getElementById('downloadLink');
+        downloadLink.href = `/api/download/${data.video_path}`;
+        downloadLink.download = data.video_path;
+    } else {
+        showAlert('Error: ' + data.error);
+    }
+}
+
+function showAlert(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Insert at top of the active tab
+    const activeTab = document.querySelector('.tab-pane.active');
+    activeTab.insertBefore(alertDiv, activeTab.firstChild);
+    
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+        alertDiv.classList.remove('show');
+        setTimeout(() => alertDiv.remove(), 300);
+    }, 5000);
+}
+
+// Fake processing animation with fun facts and emojis
+function startFakeProcessingAnimation() {
+    // Reset steps
+    const steps = document.querySelectorAll('.processing-steps .step');
+    steps.forEach(step => {
+        step.innerHTML = step.innerHTML.replace('✅', '⏳');
+        step.classList.remove('completed');
+    });
+    
+    // Fun status messages with emojis for different stages
+    const statusMessages = [
+        "🎬 Summoning video wizards...",
+        "✨ Sprinkling quote magic...",
+        "🎨 Painting your masterpiece...",
+        "🚀 Turbocharging your video...",
+        "🏁 Putting final sparkles..."
+    ];
+    
+    // Fun facts about video production and quotes
+    const funFacts = [
+        "Did you know? If you printed all the videos uploaded to YouTube in one day, the paper would reach the moon! (Not really, but it would be a LOT).",
+        "Quote fact: Oscar Wilde's last words were allegedly 'Either that wallpaper goes, or I do.' Talk about exit lines!",
+        "Movie magic: The entire Lord of the Rings trilogy was filmed in just 438 days. Your video is taking way less time!",
+        "Video fact: The first YouTube video was only 18 seconds long and featured a guy at a zoo.",
+        "Quote wisdom: According to science, inspirational quotes actually do boost your motivation and improve your brain function. How cool is that?"
+    ];
+    
+    const subStatusMessages = [
+        ["🧠 Teaching AI your style", "🔍 Finding perfect backgrounds", "🧪 Mixing digital ingredients"],
+        ["🔤 Making fonts look fabulous", "📐 Calculating golden ratios", "💫 Adding secret sauce to text"],
+        ["🌈 Adding Instagram-worthy filters", "⚡ Generating viral potential", "🎭 Making emotions pop"],
+        ["📱 Making it social-media ready", "💎 Polishing pixels to perfection", "📊 Optimizing engagement factors"],
+        ["🏆 Preparing your masterpiece", "📦 Wrapping it with a bow", "🚚 Getting ready for delivery"]
+    ];
+    
+    // Status display elements
+    const statusEl = document.getElementById('processingStatus');
+    const subStatusEl = document.getElementById('processingSubStatus');
+    
+    // Create an element for fun facts if it doesn't exist
+    let funFactEl = document.getElementById('processingFunFact');
+    if (!funFactEl) {
+        funFactEl = document.createElement('p');
+        funFactEl.id = 'processingFunFact';
+        funFactEl.className = 'mt-3 text-info fst-italic';
+        document.querySelector('.fancy-loader-container').after(funFactEl);
+    }
+    
+    // Non-linear progress simulation - we'll still use this for timing
+    const progressStages = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+    let currentStep = 0;
+    let currentFact = -1;
+    
+    // Update function - now just handles time-based updates without a progress bar
+    function updateStage(index) {
+        if (index >= progressStages.length) return;
+        
+        const stage = progressStages[index];
+        
+        // Show a new fun fact at certain points
+        if (stage >= 4 && currentFact < 0) {
+            currentFact = 0;
+            showFunFact(0);
+        } else if (stage >= 8 && currentFact < 1) {
+            currentFact = 1;
+            showFunFact(1);
+        } else if (stage >= 12 && currentFact < 2) {
+            currentFact = 2;
+            showFunFact(2);
+        } else if (stage >= 16 && currentFact < 3) {
+            currentFact = 3;
+            showFunFact(3);
+        } else if (stage >= 19 && currentFact < 4) {
+            currentFact = 4;
+            showFunFact(4);
+        }
+        
+        // Update status messages at certain thresholds with emoji animations
+        if (stage >= 5 && currentStep < 1) {
+            currentStep = 1;
+            statusEl.innerHTML = `${statusMessages[1]} <span class="emoji-bounce">✨</span>`;
+            updateStep(1);
+            rotateSubStatus(1);
+        } else if (stage >= 10 && currentStep < 2) {
+            currentStep = 2;
+            statusEl.innerHTML = `${statusMessages[2]} <span class="emoji-bounce">🎨</span>`;
+            updateStep(2);
+            rotateSubStatus(2);
+        } else if (stage >= 14 && currentStep < 3) {
+            currentStep = 3;
+            statusEl.innerHTML = `${statusMessages[3]} <span class="emoji-bounce">🚀</span>`;
+            updateStep(3);
+            rotateSubStatus(3);
+        } else if (stage >= 18 && currentStep < 4) {
+            currentStep = 4;
+            statusEl.innerHTML = `${statusMessages[4]} <span class="emoji-bounce">🏁</span>`;
+            updateStep(4);
+            rotateSubStatus(4);
+        }
+        
+        // Calculate delay for next update - make it more varied and interesting
+        let delay;
+        if (index < 5) delay = 600 + Math.random() * 400; // Start slow with variation
+        else if (index < 10) delay = 400 + Math.random() * 300; // Speed up with variation
+        else if (index < 15) delay = 300 + Math.random() * 200; // Even faster with variation
+        else delay = 500 + Math.random() * 400; // Slow down at the end with more variation
+        
+        // Schedule next update
+        setTimeout(() => updateStage(index + 1), delay);
+    }
+    
+    // The rest of your functions can stay the same
+    function showFunFact(factIndex) {
+        funFactEl.style.opacity = 0;
+        setTimeout(() => {
+            funFactEl.textContent = funFacts[factIndex];
+            funFactEl.style.opacity = 1;
+        }, 300);
+    }
+    
+    // Mark step as complete with a fun animation
+    function updateStep(stepIndex) {
+        const stepEl = document.getElementById(`step${stepIndex}`);
+        if (stepEl) {
+            stepEl.innerHTML = stepEl.innerHTML.replace('⏳', '✅');
+            stepEl.classList.add('completed');
+            
+            // Add a little animation
+            stepEl.style.transform = 'scale(1.05)';
+            setTimeout(() => {
+                stepEl.style.transform = 'scale(1)';
+            }, 300);
+        }
+    }
+    
+    // Rotate through substatus messages
+    function rotateSubStatus(groupIndex) {
+        let msgIndex = 0;
+        const messages = subStatusMessages[groupIndex];
+        
+        function updateSubStatus() {
+            subStatusEl.innerHTML = messages[msgIndex];
+            subStatusEl.style.opacity = 0;
+            setTimeout(() => {
+                subStatusEl.style.opacity = 1;
+            }, 150);
+            msgIndex = (msgIndex + 1) % messages.length;
+        }
+        
+        updateSubStatus();
+        return setInterval(updateSubStatus, 2500);
+    }
+    
+    // Start with first status with bouncing emoji
+    statusEl.innerHTML = `${statusMessages[0]} <span class="emoji-bounce">🎬</span>`;
+    let interval = rotateSubStatus(0);
+    
+    // Start progress updates
+    updateStage(0);
+    
+    // Stop previous intervals when changing status groups
+    const oldRotateInterval = interval;
+    if (oldRotateInterval) clearInterval(oldRotateInterval);
+}
+
+// Update the CSS styles for our new loader animation
+const style = document.createElement('style');
+style.textContent = `
+    .processing-steps {
+        max-width: 330px;
+        margin: 0 auto;
+        text-align: left;
+    }
+    .processing-steps .step {
+        margin-bottom: 10px;
+        transition: all 0.3s ease;
+        opacity: 0.7;
+        padding: 4px 8px;
+        border-radius: 6px;
+    }
+    .processing-steps .step.completed {
+        font-weight: bold;
+        opacity: 1;
+        color: #28a745;
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+    
+    /* Fancy loader animation */
+    .fancy-loader-container {
+        height: 30px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto;
+    }
+    .fancy-loader {
+        display: flex;
+        align-items: center;
+    }
+    .fancy-loader-dot {
+        width: 12px;
+        height: 12px;
+        margin: 0 5px;
+        background: linear-gradient(90deg, #7928CA, #FF0080);
+        border-radius: 50%;
+        transform: translateY(0);
+        animation: fancy-bounce 1.5s infinite ease-in-out;
+    }
+    .fancy-loader-dot.dot1 { animation-delay: 0s; }
+    .fancy-loader-dot.dot2 { animation-delay: 0.1s; }
+    .fancy-loader-dot.dot3 { animation-delay: 0.2s; }
+    .fancy-loader-dot.dot4 { animation-delay: 0.3s; }
+    .fancy-loader-dot.dot5 { animation-delay: 0.4s; }
+    
+    @keyframes fancy-bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-15px); }
+    }
+    
+    #processingFunFact {
+        transition: opacity 0.5s ease;
+        font-size: 0.9rem;
+        border-left: 3px solid #17a2b8;
+        padding-left: 10px;
+        margin-left: 15px;
+        margin-right: 15px;
+    }
+    .emoji-bounce {
+        display: inline-block;
+        animation: bounce 1s infinite;
+    }
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+    #processingSubStatus {
+        transition: opacity 0.3s ease;
+        min-height: 24px;
+    }
+`;
+document.head.appendChild(style);
+
+// Update the loading steps display with fun emojis
+document.addEventListener('DOMContentLoaded', function() {
+    const steps = [
+        "⏳ 🎥 Finding perfect background video...",
+        "⏳ 💬 Making your quote look fabulous...",
+        "⏳ 🌟 Sprinkling visual magic dust...",
+        "⏳ 📱 Optimizing for social media fame...",
+        "⏳ 🧙‍♂️ Casting final rendering spells..."
+    ];
+    
+    for (let i = 0; i < steps.length; i++) {
+        const stepEl = document.getElementById(`step${i+1}`);
+        if (stepEl) {
+            stepEl.innerHTML = steps[i];
+        }
+    }
+});
+</script>
+{% endblock %}
