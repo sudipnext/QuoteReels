@@ -14,42 +14,12 @@ Reels Automator is a powerful Flask application that automates the creation of s
 - 🎬 **Professional Video Generation**: Creates social media-ready vertical videos
 - 🚀 **AWS-Ready**: Designed for deployment on AWS Lambda
 
-## 📁 Project Structure
-
-```
-reels-automator
-├── src
-│   ├── api               # API integrations
-│   │   ├── __init__.py
-│   │   ├── gemini.py     # Gemini AI interface
-│   │   ├── quotes.py     # Quotes API client
-│   │   └── video.py      # Video API client
-│   ├── app.py            # Main application entry point
-│   ├── config.py         # Configuration settings
-│   ├── services          # Core business logic
-│   │   ├── __init__.py
-│   │   ├── analyzer.py   # Quote analysis service
-│   │   ├── downloader.py # Video downloading service
-│   │   └── generator.py  # Video generation service
-│   └── utils             # Utility functions
-│       ├── __init__.py
-│       └── helpers.py    # Helper utilities
-├── tests                 # Test suite
-│   ├── __init__.py
-│   ├── test_analyzer.py
-│   ├── test_downloader.py
-│   └── test_generator.py
-├── requirements.txt      # Project dependencies
-├── .env                  # Environment variables (not tracked in git)
-├── .gitignore            # Git ignore file
-└── README.md             # This documentation
-```
 
 ## 🚀 Installation
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/reels-automator.git
+   git clone https://github.com/sudipnext/QuoteReels.git
    ```
 
 2. **Navigate to the project directory:**
@@ -83,7 +53,7 @@ reels-automator
 To start the application, execute:
 
 ```bash
-python src/app.py
+python app.py
 ```
 
 This will:
