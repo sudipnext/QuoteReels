@@ -1,19 +1,21 @@
-# Reels Automator
+# QuoteReels
 
-![Reels Automator](https://img.shields.io/badge/Reels-Automator-blue)
+![QuoteReels](https://img.shields.io/badge/QuoteReels-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Python](https://img.shields.io/badge/python-3.6%2B-blue)
 
-Reels Automator is a powerful Flask application that automates the creation of short-form video content. It fetches random quotes from a quotes API, analyzes them using the Gemini AI API, downloads relevant background videos from Coverr based on the analyzed category, and generates a professional video output combining these elements.
+QuoteReels is a powerful Flask application that automates the creation of short-form video content. It fetches random or custom quotes, analyzes them using the Gemini AI API, downloads relevant background videos from Coverr, Pexels, or Pixabay, and generates a professional video output with AI voiceover.
 
 ## ✨ Features
 
-- 🔄 **Automated Quote Fetching**: Daily random quotes from a dedicated quotes API
-- 🧠 **AI-Powered Analysis**: Uses Gemini AI to categorize and analyze quotes
-- 🎥 **Smart Video Selection**: Downloads relevant background videos from Coverr
-- 🎬 **Professional Video Generation**: Creates social media-ready vertical videos
-- 🚀 **AWS-Ready**: Designed for deployment on AWS Lambda
-
+- 🔄 **Automated Quote Fetching**: Get daily random quotes or use your own custom quotes
+- 🧠 **AI-Powered Analysis**: Uses Gemini AI to categorize and analyze quotes for best video match
+- 🎥 **Smart Video Selection**: Downloads relevant background videos from Coverr, Pexels, or Pixabay
+- 🗣️ **AI Voiceover**: Choose from dozens of realistic voices for text-to-speech narration
+- 🎬 **Professional Video Generation**: Creates social media-ready vertical videos (9:16)
+- ⚡ **Fast & Memory-Efficient**: Optimized video processing with MoviePy
+- 🚀 **API & Web UI**: User-friendly web interface and REST API endpoints
+- 📥 **Download & Preview**: Instantly preview and download your generated videos
 
 ## 🚀 Installation
 
@@ -24,7 +26,7 @@ Reels Automator is a powerful Flask application that automates the creation of s
 
 2. **Navigate to the project directory:**
    ```bash
-   cd reels-automator
+   cd QuoteReels
    ```
 
 3. **Create and activate a virtual environment (recommended):**
@@ -42,8 +44,9 @@ Reels Automator is a powerful Flask application that automates the creation of s
    Create a `.env` file in the root directory with the following variables:
    ```
    GEMINI_API_KEY=your_gemini_api_key
-   QUOTES_API_KEY=your_quotes_api_key
-   OUTPUT_DIR=path/to/output/directory
+   COVERR_API_KEY=your_coverr_api_key
+   PEXELS_API_KEY=your_pexels_api_key
+   PIXABAY_API_KEY=your_pixabay_api_key
    ```
 
 ## 📋 Usage
@@ -57,15 +60,26 @@ python app.py
 ```
 
 This will:
-1. Fetch a random quote from the quotes API
-2. Analyze the quote using Gemini AI
-3. Download an appropriate background video from Coverr
-4. Generate a video with the quote overlaid on the background
-5. Save the output to the configured directory
+1. Serve a web UI at `http://localhost:5000`
+2. Allow you to generate videos from random or custom quotes
+3. Let you choose the video provider (Coverr, Pexels, Pixabay) and AI voice
+4. Preview and download your generated videos
+
+### API Endpoints
+
+- `GET /get-random-quote` — Fetch a random quote
+- `POST /generate-video` — Generate a video from a quote (random or custom)
+- `POST /generate-video-custom` — Generate a video from a custom quote
+- `GET /list/voices` — List available AI voices
+- `GET /api/videos` — List generated videos
+- `GET /api/videos/<filename>` — Stream a generated video
+- `GET /api/download/<filename>` — Download a generated video
 
 ### Advanced Usage
 
-For batch processing or custom configurations, you can modify the settings in `config.py`.
+- **Custom Quotes**: Enter your own quote and author in the web UI
+- **Voice Selection**: Choose from a wide range of AI voices (male/female, multiple languages)
+- **Video Provider**: Select between Coverr, Pexels, or Pixabay for background video matching
 
 ## 🧪 Testing
 
@@ -83,7 +97,7 @@ pytest tests/test_analyzer.py
 
 ## 🤝 Contributing
 
-We welcome contributions to Reels Automator! Here's how you can help:
+We welcome contributions to QuoteReels! Here's how you can help:
 
 1. **Fork the repository** on GitHub
 2. **Create a new branch** for your feature or bugfix
@@ -118,4 +132,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Flask](https://flask.palletsprojects.com/) - Web framework
 - [Gemini AI](https://ai.google.dev/gemini-api) - AI analysis
 - [Coverr](https://coverr.co/) - Video resources
+- [Pexels](https://pexels.com/) - Video resources
+- [Pixabay](https://pixabay.com/) - Video resources
 - [MoviePy](https://zulko.github.io/moviepy/) - Video editing library
+- [Edge TTS](https://github.com/ranyelhousieny/edge-tts) - Text-to-speech voices
