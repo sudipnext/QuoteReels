@@ -1,9 +1,12 @@
 from flask import Flask, jsonify, request, render_template, send_file, send_from_directory
 from services.video_generator import VideoGenerator
-from services.analyzer import Analyzer
+from coverr.analyzer import CoverrAnalyzer
+from pexels.analyzer import PexelsAnalyzer
+from pixabay.analyzer import PixabayAnalyzer
 from api.quotes import QuoteAPI
 import logging
 import os
+from api.tts_client import TTSClient
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -13,7 +16,9 @@ app = Flask(__name__)
 
 # Initialize services
 generator = VideoGenerator()
-analyzer = Analyzer()
+coverr_analyzer = CoverrAnalyzer()
+pexels_analyzer = PexelsAnalyzer()
+pixabay_analyzer = PixabayAnalyzer()
 quotes_api = QuoteAPI()
 
 # Define the output directory path
@@ -90,6 +95,17 @@ def generate_video():
             
         quote = data["quote"]
         author = data["author"]
+        analyzer_request = data["analyzer"]
+        if analyzer_request == "coverr":
+            analyzer = coverr_analyzer
+        elif analyzer_request == "pexels":
+            analyzer = pexels_analyzer
+        elif analyzer_request == "pixabay":
+            analyzer = pixabay_analyzer
+        else:
+            return jsonify({"error": "Invalid analyzer specified", "success": False}), 400
+        
+        tts_voice = data.get("voice", "en-US-Wavenet-D")
 
         # Get matching video URL
         video_urls = analyzer.get_video_url(quote)
@@ -97,7 +113,7 @@ def generate_video():
             return jsonify({"error": "Failed to find matching video", "success": False}), 500
 
         # Generate video
-        output_path = generator.generate_video(quote, author, video_urls["high_quality"])
+        output_path = generator.generate_video(quote, author, video_urls["high_quality"], tts_voice=tts_voice)
         
         if not output_path:
             return jsonify({"success": False, "error": "Failed to generate video"}), 500
@@ -130,6 +146,14 @@ def generate_video_custom():
         if not data or "quote" not in data or "author" not in data:
             return jsonify({"error": "Missing quote or author", "success": False}), 400
 
+        analyzer = data.get("analyzer")
+        if analyzer == "coverr":
+            analyzer = coverr_analyzer
+        elif analyzer == "pexels":
+            analyzer = pexels_analyzer
+        elif analyzer == "pixabay":
+            analyzer = pixabay_analyzer
+
         # Get matching video URL
         video_urls = analyzer.get_video_url(data["quote"])
         if not video_urls or not video_urls.get("high_quality"):
@@ -139,7 +163,8 @@ def generate_video_custom():
         output_path = generator.generate_video(
             quote=data["quote"],
             author=data["author"],
-            video_url=video_urls["high_quality"]
+            video_url=video_urls["high_quality"],
+            tts_voice=data.get("voice", "en-US-Wavenet-D")
         )
 
         if not output_path:
@@ -206,6 +231,26 @@ def api_serve_video(filename):
     except Exception as e:
         app.logger.error(f"Error serving video: {e}")
         return jsonify({"error": "Video not found"}), 404
+
+
+@app.route('/list/voices', methods=['GET'])
+def list_voices():
+    """List available voices"""
+    try:
+        tts = TTSClient()
+        voices = tts.list_voices()
+        if not voices:
+            return jsonify({"error": "Failed to fetch voices", "success": False}), 500
+        return jsonify({
+            "success": True,
+            "voices": voices
+        }), 200
+    except Exception as e:
+        logger.error(f"Error fetching voices: {e}")
+        return jsonify({"error": str(e), "success": False}), 500
+
+
+
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=5000)

@@ -8,6 +8,7 @@ from flask import jsonify
 import requests
 from moviepy import CompositeVideoClip, TextClip, VideoFileClip, ColorClip, concatenate_videoclips
 import tqdm
+from api.tts_client import TTSClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -102,66 +103,61 @@ class VideoGenerator:
                 logger.warning(f"Failed to delete temporary file {file}: {e}")
 
     def _resize_video(self, clip: VideoFileClip, target_size: Tuple[int, int]) -> VideoFileClip:
-        """Resize video with letterboxing/pillarboxing to prevent stretching"""
-        # First trim to target duration to reduce memory footprint
+        """Resize and crop video to fill the target size (TikTok 9:16) without distortion."""
         if clip.duration > self.target_duration:
             clip = clip.subclipped(0, self.target_duration)
-            
-        # Target aspect ratio (9:16 for vertical video)
-        target_ratio = target_size[0] / target_size[1]  # width/height = 9/16
-        clip_ratio = clip.w / clip.h
-        
-        logger.info(f"Input video ratio: {clip_ratio:.3f}, target ratio: {target_ratio:.3f}")
-        
-        # Create a black background of the target size
-        background = ColorClip(size=target_size, color=(0, 0, 0))
-        background = background.with_duration(clip.duration)
-        
-        # Calculate the size that preserves aspect ratio while fitting within the target
-        if clip_ratio > target_ratio:  # Wider than target (landscape video)
-            # Scale based on width, will have black bars top and bottom
-            scale_factor = target_size[0] / clip.w
-            new_width = target_size[0]
-            new_height = int(clip.h * scale_factor)
-            
-            logger.info(f"Adding letterboxing (black bars on top/bottom): new size {new_width}x{new_height}")
-            
-            # Resize while maintaining aspect ratio
-            resized_clip = clip.resized(width=new_width, height=new_height)
-        else:  # Taller than target or equal (portrait video)
-            # Scale based on height, will have black bars on sides
-            scale_factor = target_size[1] / clip.h
-            new_height = target_size[1]
-            new_width = int(clip.w * scale_factor)
-            
-            logger.info(f"Adding pillarboxing (black bars on sides): new size {new_width}x{new_height}")
-            
-            # Resize while maintaining aspect ratio
-            resized_clip = clip.resized(width=new_width, height=new_height)
-        
-        # Position in the center of the frame - this creates the letterboxing/pillarboxing effect
-        positioned_clip = resized_clip.with_position(("center", "center"))
-        
-        # Composite the resized video over the black background
-        final = CompositeVideoClip([background, positioned_clip], size=target_size)
-        
-        # Clean up intermediate clips to free memory
-        if hasattr(resized_clip, 'close'):
-            resized_clip.close()
-        
-        return final
 
-    def generate_video(self, quote: str, author: str, video_url: str) -> Optional[str]:
-        """Memory-optimized video generation"""
+        target_w, target_h = target_size
+        target_ratio = target_w / target_h
+        clip_ratio = clip.w / clip.h
+
+        logger.info(f"Input video ratio: {clip_ratio:.3f}, target ratio: {target_ratio:.3f}")
+
+        if clip_ratio > target_ratio:
+            # Crop width (center)
+            new_width = int(clip.h * target_ratio)
+            x1 = int((clip.w - new_width) / 2)
+            x2 = x1 + new_width
+            y1 = 0
+            y2 = clip.h
+            logger.info(f"Cropping width: x1={x1}, x2={x2}, y1={y1}, y2={y2}")
+        else:
+            # Crop height (center)
+            new_height = int(clip.w / target_ratio)
+            y1 = int((clip.h - new_height) / 2)
+            y2 = y1 + new_height
+            x1 = 0
+            x2 = clip.w
+            logger.info(f"Cropping height: x1={x1}, x2={x2}, y1={y1}, y2={y2}")
+
+        # Ensure crop box is within bounds
+        x1 = max(0, x1)
+        y1 = max(0, y1)
+        x2 = min(clip.w, x2)
+        y2 = min(clip.h, y2)
+
+        cropped = clip.cropped(x1=x1, y1=y1, x2=x2, y2=y2)
+        resized = cropped.resized(new_size=target_size)
+        return resized
+
+    def generate_video(self, quote: str, author: str, video_url: str, tts_voice: str = None) -> Optional[str]:
+        """Memory-optimized video generation with optional TTS audio"""
         temp_video_path = None
+        temp_audio_path = None
         preview_clip = None
         video = None
         text_clip = None
         final_video = None
-        
+
         try:
             # Download video
             temp_video_path = self._download_video(video_url)
+
+            # Generate TTS audio if voice is provided
+            if tts_voice:
+                temp_audio_path = self.temp_dir / f"temp_audio_{int(time.time())}.mp3"
+                tts_client = TTSClient()
+                tts_client.generate_voice(quote, tts_voice, str(temp_audio_path))
 
             with tqdm.tqdm(total=5, desc="Generating video") as pbar:
                 # Load video at lower resolution first for preview
@@ -219,49 +215,40 @@ class VideoGenerator:
                 else:
                     video = video.subclipped(0, self.target_duration)
                 pbar.update(1)
-                print(f"Quote is {quote} and author is {author}")
+                
                 # Create text overlay and final composition
                 text_clip = self._create_text_clip(quote, author, video.duration)
-                
+
                 final_video = CompositeVideoClip(
                     [video, text_clip],
                     size=self.target_size
                 )
                 pbar.update(1)
-                
+
                 # Generate output path
                 output_path = self.output_dir / f"quote_video_{int(time.time())}.mp4"
-                
-                # Memory-optimized encoding
-                with tqdm.tqdm(
-                    total=int(final_video.duration * self.target_fps),
-                    desc="Encoding video",
-                    unit="frames"
-                ) as t:
-                    def write_progress(frame):
-                        t.update(1)
-                    
-                    # Write video with memory-optimized settings
-                    final_video.write_videofile(
-                        str(output_path),
-                        fps=self.target_fps,  # Set output FPS here
-                        codec="libx264",
-                        preset="ultrafast",  # Even faster encoding, lower quality but less RAM
-                        audio_codec="aac",
-                        audio=False,  # Skip audio processing
-                        threads=4,
-                        ffmpeg_params=["-tile-columns", "6", "-frame-parallel", "1"]  # Parallelization
-                    )
-                
-                logger.info(f"Video generated at: {output_path}")
-                return str(output_path)  # Return the path as a string, not a jsonify response
-                
+
+                # Write video with audio if available
+                final_video.write_videofile(
+                    str(output_path),
+                    fps=self.target_fps,
+                    codec="libx264",
+                    preset="ultrafast",
+                    audio=str(temp_audio_path) if temp_audio_path else False,
+                    audio_codec="aac" if temp_audio_path else None,
+                    threads=4,
+                    ffmpeg_params=["-tile-columns", "6", "-frame-parallel", "1"]
+                )
+
+            logger.info(f"Video generated at: {output_path}")
+            return str(output_path)
+
         except Exception as e:
             logger.error("Error generating video", exc_info=True)
             import traceback
-            logger.error(traceback.format_exc())  # Print full stack trace
+            logger.error(traceback.format_exc())
             return None
-            
+
         finally:
             # Clean up all resources
             for clip in [preview_clip, video, text_clip, final_video]:
@@ -270,7 +257,9 @@ class VideoGenerator:
                         clip.close()
                     except:
                         pass
-                
+
             if temp_video_path:
                 self._cleanup_temp_files(temp_video_path)
+            if temp_audio_path and temp_audio_path.exists():
+                temp_audio_path.unlink()
 

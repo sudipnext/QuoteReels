@@ -10,20 +10,13 @@ class Config:
     """Configuration class to manage all environment variables"""
     
     # API Keys
-    GEMINI_API_KEY = os.getenv('GEMINI_API_URL')
-    RAPIDAPI_KEY = os.getenv('RAPIDAPI_KEY')
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
     COVERR_API_KEY = os.getenv('COVERR_API_KEY')
+    PEXELS_API_KEY = os.getenv('PEXELS_API_KEY')
+    PIXABAY_API_KEY = os.getenv('PIXABAY_API_KEY')
     
     # API URLs
-    QUOTES_API_URL = os.getenv('QUOTES_API_URL', 'https://api.quotable.io/random')
     COVERR_API_URL = os.getenv('COVERR_API_URL', 'https://coverr.co/api/videos')
-    QUOTE_API_BASE_URL = os.getenv('QUOTE_API_BASE_URL', 'https://quotes15.p.rapidapi.com')
-    
-    # API Headers
-    RAPIDAPI_HEADERS = {
-        'X-RapidAPI-Key': RAPIDAPI_KEY,
-        'X-RapidAPI-Host': os.getenv('RAPIDAPI_HOST', 'quotes-api12.p.rapidapi.com')
-    }
     
     # Application Settings
     DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
@@ -35,12 +28,13 @@ class Config:
         Returns: bool indicating if config is valid
         """
         required_vars = [
-            'GEMINI_API_URL',
-            'RAPIDAPI_KEY',
-            'COVERR_API_KEY'
+            'GEMINI_API_KEY',
+            'COVERR_API_KEY',
+            'PEXELS_API_KEY',
+            'PIXABAY_API_KEY',
         ]
         
-        missing_vars = [var for var in required_vars if not getattr(cls, var.replace('URL', 'KEY'), None)]
+        missing_vars = [var for var in required_vars if not getattr(cls, var, None)]
         
         if missing_vars:
             raise EnvironmentError(

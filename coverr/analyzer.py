@@ -1,7 +1,6 @@
 from typing import List, Dict, Optional
 from api.gemini import GeminiAPI
-from api.coverr import CoverrAPI
-from api.quotes import QuoteAPI
+from coverr.coverr import CoverrAPI
 from api.gemini import GeminiAPIError
 import logging
 
@@ -13,14 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 """
-This analyzer should be able to get the random quote from the quotes api and then with that text along with it should call the coverr api to get the all video categories and then it should try to match the category description with the quote and then make sense of the category and then call the gemini api to compare and give me the proper video cateogry and then it should finally call the coverr api video api to get the video download url and then return the video url.
+This analyzer should be able to get the random quote USING THE GEMINI and then with that text along with it should call the coverr api to get the all video categories and then it should try to match the category description with the quote and then make sense of the category and then call the gemini api to compare and give me the proper video category and then it should finally call the coverr api video api to get the video download url and then return the video url.
 """
 
-class Analyzer:
+class CoverrAnalyzer:
     def __init__(self):
         self.gemini = GeminiAPI()
         self.coverr = CoverrAPI()
-        self.quotes = QuoteAPI()
 
     def _extract_minimal_info(self, category: Dict) -> Dict:
         """Extract only name, tags, and id from a category"""
@@ -138,10 +136,7 @@ class Analyzer:
             if not category_videos:
                 logger.error(f"No videos found for category: {matched_category}")
                 return None
-
-            # Get first video's URLs
-            # first_video = category_videos["hits"][0]
-            #make the random video selection
+            # Randomly select a video from the category
             import random
             first_video = random.choice(category_videos["hits"])
             video_urls = self._extract_video_urls(first_video)

@@ -1,5 +1,6 @@
 import google.generativeai as genai
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Literal
+from enum import Enum
 import logging
 from config import Config
 
@@ -78,5 +79,37 @@ class GeminiAPI:
         Return only the category name that best matches the quote's theme and emotion.
         Do not include any additional text or explanation.
         """
+        
+        return self.analyze_content(prompt)
+    
+    def give_nice_searchable_parameter_for_given_text(self, text: str, provider: Literal['pixels', 'pixabay'] = 'pixabay') -> str:
+        """
+        Generate a nice searchable parameter for the given text
+        
+        Args:
+            text: The text to analyze
+            provider: The provider to search on (pixels or pixabay)
+            
+        Returns:
+            str: The generated searchable parameter
+        """
+        if provider not in ['pixels', 'pixabay']:
+            raise ValueError("Provider must be either 'pixels' or 'pixabay'")
+        if provider == 'pixabay':
+            prompt = f"""
+            Generate a nice searchable parameter for the following text. It should be concise and relevant and it will be used to search for videos on pixabay or pexels api so be careful about the words you use.
+            
+            Text: "{text}"
+            
+            Return only the generated parameter without any additional text or explanation. 
+            """
+        elif provider == 'pixels':
+            prompt = f"""
+            Generate a nice searchable parameter for the following text. It should be concise and relevant and it will be used to search for videos on pixels api so be careful about the words you use.
+            
+            Text: "{text}"
+            
+            Return only the generated parameter without any additional text or explanation.
+            """
         
         return self.analyze_content(prompt)

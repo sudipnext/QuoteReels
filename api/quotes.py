@@ -1,137 +1,130 @@
-import requests
 import random
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 import logging
-from functools import wraps
 from config import Config
+from .gemini import GeminiAPI, GeminiAPIError
 
 class QuoteAPIError(Exception):
     """Custom exception for Quote API errors"""
     pass
 
 class QuoteAPI:
-    BASE_URL = Config.QUOTE_API_BASE_URL
-    
-    """List of available quote types"""
+    """List of available quote types for Gemini generation"""
     QUOTE_TYPES  = [
         "happiness",
         "love",
         "selfconfidence",
         "success",
         "inspirational",
+        "wisdom", 
+        "courage",
+        "life",
+        "knowledge",
+        "motivation"
     ]
 
     def __init__(self):
-        """Initialize Quote API client"""
-            
-        self.headers = Config.RAPIDAPI_HEADERS
-        self.session = requests.Session()
-        self.session.headers.update(self.headers)
-
-    def _make_request(
-        self,
-        endpoint: str,
-        method: str = "GET",
-        params: Optional[Dict] = None,
-        **kwargs
-    ) -> Dict:
-        """
-        Generic request handler for Quote API
-        
-        Args:
-            endpoint: API endpoint to call
-            method: HTTP method (GET, POST, etc.)
-            params: Query parameters
-            **kwargs: Additional arguments to pass to requests
-            
-        Returns:
-            JSON response from API
-            
-        Raises:
-            QuoteAPIError: If API request fails
-        """
+        """Initialize Quote API client with Gemini"""
+        # Initialize Gemini Client
         try:
-            url = f"{self.BASE_URL}/{endpoint.lstrip('/')}"
-            response = self.session.request(
-                method=method,
-                url=url,
-                params=params,
-                **kwargs
-            )
-            print(f"Request URL: {url}")
-            print(f"Request Params: {params}")
-            print(f"Response Status Code: {response.status_code}")
-            print(f"Response Headers: {response.headers}")
-
-            print(response.json())
-            response.raise_for_status()
-            return response.json()
-
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Quote API error: {str(e)}")
-            raise QuoteAPIError(f"Failed to fetch data: {str(e)}")
+            self.gemini_client = GeminiAPI()
+            logging.info("Gemini client initialized successfully.")
+        except GeminiAPIError as e:
+            logging.error(f"Failed to initialize Gemini client during QuoteAPI setup: {e}")
+            self.gemini_client = None  # Set to None if initialization fails
 
     def get_random_quote(self, quote_type: Optional[str] = None) -> Dict[str, str]:
         """
-        Fetch a random quote
+        Fetch a random quote using Gemini API.
         
         Args:
-            quote_type: Optional specific quote type, if None random type is chosen
+            quote_type: Optional specific quote type, if None random type is chosen.
             
         Returns:
             Dictionary containing quote details with keys:
             - quote: The quote text
             - author: The quote author
             - type: The quote type/category
-            
-        Raises:
-            QuoteAPIError: If quote fetch fails
         """
-        try:
-            quote_type = quote_type or random.choice(self.QUOTE_TYPES)
-            
-            response = self._make_request(
-                "quotes/random",
-                params={"type": quote_type}
-            )
-            print(response)
-            
-            # Extract quote from response structure
-            return {
-                "quote": response.get("quote", "An error occurred while fetching the quote"),
-                "author": response.get("author", "Unknown"),
-                "type": response.get("type", quote_type)
-            }
-
-        except QuoteAPIError as e:
-            logging.error(f"Error fetching random quote: {e}")
-            return {
-                "quote": "An error occurred while fetching the quote",
-                "author": "Unknown",
-                "type": "error"
-            }
-
-    def get_quotes_by_type(self, quote_type: str, limit: int = 10) -> list:
-        """
-        Fetch multiple quotes of a specific type
+        # Determine the topic for the quote
+        topic = quote_type
+        if not topic:
+            topic = random.choice(self.QUOTE_TYPES)
+        elif topic.lower() not in self.QUOTE_TYPES and topic.lower() != "error": # Allow "error" type if passed
+            # If user provides a custom type not in QUOTE_TYPES, Gemini will try to generate for it.
+            logging.info(f"Attempting to generate Gemini quote for user-specified type: {topic}")
         
-        Args:
-            quote_type: Type of quotes to fetch
-            limit: Number of quotes to fetch
-            
-        Returns:
-            List of quote dictionaries
+        return self.generate_quote_with_gemini(topic)
+
+    def generate_quote_with_gemini(self, quote_type: Optional[str] = None) -> Dict[str, str]:
         """
+        Generate a quote using Gemini API.
+
+        Args:
+            quote_type: Optional specific quote type. If None, a random type from QUOTE_TYPES is chosen.
+
+        Returns:
+            Dictionary containing quote details with keys:
+            - quote: The quote text
+            - author: The quote author
+            - type: The quote type/category
+        """
+        if not self.gemini_client:
+            logging.warning("Gemini client not initialized. Cannot generate quote with Gemini.")
+            return {
+                "quote": "Failed to generate quote: Gemini client not available.",
+                "author": "System",
+                "type": quote_type or "error"
+            }
+
+        # Determine the topic for the quote
+        topic = quote_type
+        if not topic:
+            topic = random.choice(self.QUOTE_TYPES)
+        # If topic is provided but not in QUOTE_TYPES, we still proceed,
+        # allowing users to request quotes on arbitrary topics.
+        # Logging for this case is handled in get_random_quote or if called directly.
+        
+        prompt = f"""Generate a short, impactful quote about '{topic}'.
+The quote should be original and insightful.
+Also, provide the author of the quote. If the author is unknown, or if you are generating it, you can use "AI Generated" or "Anonymous".
+Format your response strictly as:
+Quote: [The quote text]
+Author: [The author's name]"""
+
         try:
-            response = self._make_request(
-                "quotes",
-                params={
-                    "type": quote_type,
-                }
-            )
-            return response.get("response", [])
+            response_text = self.gemini_client.analyze_content(prompt)
             
-        except QuoteAPIError as e:
-            logging.error(f"Error fetching quotes by type: {e}")
-            return []
+            # Default values if parsing fails
+            final_quote = "Quote not found in Gemini response."
+            final_author = "Author not found in Gemini response."
+            
+            lines = response_text.strip().split('\n')
+            for line in lines:
+                # Case-insensitive check for "Quote:" and "Author:"
+                if line.lower().startswith("quote:"):
+                    final_quote = line[len("quote:"):].strip()
+                elif line.lower().startswith("author:"):
+                    final_author = line[len("author:"):].strip()
+            
+            return {
+                "quote": final_quote,
+                "author": final_author,
+                "type": topic # Return the requested/chosen topic
+            }
+
+        except GeminiAPIError as e:
+            logging.error(f"Error generating quote with Gemini for topic '{topic}': {e}")
+            return {
+                "quote": f"An error occurred while generating an AI quote on '{topic}'.",
+                "author": "System",
+                "type": topic # Return the requested/chosen topic
+            }
+        except Exception as e:  # Catch any other unexpected errors
+            logging.error(f"Unexpected error during Gemini quote generation for topic '{topic}': {e}")
+            return {
+                "quote": "An unexpected error occurred while generating an AI quote.",
+                "author": "System",
+                "type": topic # Return the requested/chosen topic
+            }
 

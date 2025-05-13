@@ -78,6 +78,22 @@
                                 <p class="quote-text h4"></p>
                                 <p class="quote-author text-end"></p>
                             </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="randomAnalyzer" class="form-label fw-bold">Background Video Provider</label>
+                                    <select class="form-select" id="randomAnalyzer">
+                                        <option value="coverr">Coverr</option>
+                                        <option value="pexels">Pexels</option>
+                                        <option value="pixabay">Pixabay</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="randomVoice" class="form-label fw-bold">Voice</label>
+                                    <select class="form-select" id="randomVoice">
+                                        <option value="">Loading voices...</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="d-flex justify-content-center">
                                 <button class="btn btn-success btn-lg" id="generateRandomVideo">
                                     <i class="fas fa-video me-2"></i>Generate Video
@@ -96,6 +112,22 @@
                             <div class="mb-4">
                                 <label for="author" class="form-label fw-bold">Author</label>
                                 <input type="text" class="form-control form-control-lg" id="author" placeholder="Who said this quote?" required>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="customAnalyzer" class="form-label fw-bold">Background Video Provider</label>
+                                    <select class="form-select" id="customAnalyzer">
+                                        <option value="coverr">Coverr</option>
+                                        <option value="pexels">Pexels</option>
+                                        <option value="pixabay">Pixabay</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="customVoice" class="form-label fw-bold">Voice</label>
+                                    <select class="form-select" id="customVoice">
+                                        <option value="">Loading voices...</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="d-flex justify-content-center">
                                 <button type="submit" class="btn btn-success btn-lg">
@@ -187,21 +219,53 @@
 {% block scripts %}
 <script>
 let currentQuote = null;
+let voicesList = [];
+
+async function loadVoices() {
+    try {
+        const response = await fetch('/list/voices');
+        const data = await response.json();
+        if (data.success && Array.isArray(data.voices)) {
+            voicesList = data.voices;
+            populateVoiceSelect('randomVoice');
+            populateVoiceSelect('customVoice');
+        } else {
+            setVoiceSelectError('randomVoice');
+            setVoiceSelectError('customVoice');
+        }
+    } catch (e) {
+        setVoiceSelectError('randomVoice');
+        setVoiceSelectError('customVoice');
+    }
+}
+
+function populateVoiceSelect(selectId) {
+    const select = document.getElementById(selectId);
+    select.innerHTML = '';
+    voicesList.forEach(voice => {
+        const option = document.createElement('option');
+        option.value = voice.ShortName;
+        option.textContent = `${voice.FriendlyName} (${voice.Locale}, ${voice.Gender})`;
+        select.appendChild(option);
+    });
+}
+
+function setVoiceSelectError(selectId) {
+    const select = document.getElementById(selectId);
+    select.innerHTML = '<option value="">Failed to load voices</option>';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadVoices();
+});
 
 document.getElementById('getRandomQuote').addEventListener('click', async () => {
-    // Hide quote display if visible
     document.getElementById('randomQuoteDisplay').classList.add('d-none');
-    
-    // Show loading indicator
     document.getElementById('quoteLoading').classList.remove('d-none');
-    
     try {
         const response = await fetch('/get-random-quote');
         const data = await response.json();
-        
-        // Hide loading
         document.getElementById('quoteLoading').classList.add('d-none');
-        
         if (data.success) {
             currentQuote = data;
             const display = document.getElementById('randomQuoteDisplay');
@@ -222,14 +286,19 @@ document.getElementById('customQuoteForm').addEventListener('submit', async (e) 
     e.preventDefault();
     const quote = document.getElementById('quote').value;
     const author = document.getElementById('author').value;
-    currentQuote = { quote, author };
-    
+    const analyzer = document.getElementById('customAnalyzer').value;
+    const voice = document.getElementById('customVoice').value;
+    currentQuote = { quote, author, analyzer, voice };
     showLoadingModal();
     generateCustomVideo();
 });
 
 document.getElementById('generateRandomVideo').addEventListener('click', () => {
     if (currentQuote) {
+        const analyzer = document.getElementById('randomAnalyzer').value;
+        const voice = document.getElementById('randomVoice').value;
+        currentQuote.analyzer = analyzer;
+        currentQuote.voice = voice;
         showLoadingModal();
         generateVideo(currentQuote);
     }
@@ -244,10 +313,11 @@ async function generateVideo(quoteData) {
             },
             body: JSON.stringify({ 
                 quote: quoteData.quote, 
-                author: quoteData.author 
+                author: quoteData.author,
+                analyzer: quoteData.analyzer,
+                voice: quoteData.voice
             })
         });
-        
         handleVideoResponse(await response.json(), quoteData);
     } catch (error) {
         hideLoadingModal();
@@ -265,10 +335,11 @@ async function generateCustomVideo() {
             },
             body: JSON.stringify({ 
                 quote: currentQuote.quote, 
-                author: currentQuote.author 
+                author: currentQuote.author,
+                analyzer: currentQuote.analyzer,
+                voice: currentQuote.voice
             })
         });
-        
         handleVideoResponse(await response.json(), currentQuote);
     } catch (error) {
         hideLoadingModal();
@@ -292,19 +363,13 @@ function hideLoadingModal() {
 
 function handleVideoResponse(data, quoteData) {
     hideLoadingModal();
-    
     if (data.success) {
-        // Set up video preview with proper URL
         const previewVideo = document.getElementById('previewVideo');
         previewVideo.src = `/api/videos/${data.video_path}`;
         previewVideo.load();
         previewVideo.play();
-        
-        // Set up quote display in modal
         document.getElementById('modalQuote').textContent = `"${quoteData.quote}"`;
         document.getElementById('modalAuthor').textContent = `- ${quoteData.author}`;
-        
-        // Set up download link with download route
         const downloadLink = document.getElementById('downloadLink');
         downloadLink.href = `/api/download/${data.video_path}`;
         downloadLink.download = data.video_path;
@@ -320,12 +385,8 @@ function showAlert(message) {
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    
-    // Insert at top of the active tab
     const activeTab = document.querySelector('.tab-pane.active');
     activeTab.insertBefore(alertDiv, activeTab.firstChild);
-    
-    // Auto dismiss after 5 seconds
     setTimeout(() => {
         alertDiv.classList.remove('show');
         setTimeout(() => alertDiv.remove(), 300);
@@ -334,14 +395,12 @@ function showAlert(message) {
 
 // Fake processing animation with fun facts and emojis
 function startFakeProcessingAnimation() {
-    // Reset steps
     const steps = document.querySelectorAll('.processing-steps .step');
     steps.forEach(step => {
         step.innerHTML = step.innerHTML.replace('✅', '⏳');
         step.classList.remove('completed');
     });
-    
-    // Fun status messages with emojis for different stages
+
     const statusMessages = [
         "🎬 Summoning video wizards...",
         "✨ Sprinkling quote magic...",
@@ -349,8 +408,7 @@ function startFakeProcessingAnimation() {
         "🚀 Turbocharging your video...",
         "🏁 Putting final sparkles..."
     ];
-    
-    // Fun facts about video production and quotes
+
     const funFacts = [
         "Did you know? If you printed all the videos uploaded to YouTube in one day, the paper would reach the moon! (Not really, but it would be a LOT).",
         "Quote fact: Oscar Wilde's last words were allegedly 'Either that wallpaper goes, or I do.' Talk about exit lines!",
@@ -358,7 +416,7 @@ function startFakeProcessingAnimation() {
         "Video fact: The first YouTube video was only 18 seconds long and featured a guy at a zoo.",
         "Quote wisdom: According to science, inspirational quotes actually do boost your motivation and improve your brain function. How cool is that?"
     ];
-    
+
     const subStatusMessages = [
         ["🧠 Teaching AI your style", "🔍 Finding perfect backgrounds", "🧪 Mixing digital ingredients"],
         ["🔤 Making fonts look fabulous", "📐 Calculating golden ratios", "💫 Adding secret sauce to text"],
@@ -366,12 +424,10 @@ function startFakeProcessingAnimation() {
         ["📱 Making it social-media ready", "💎 Polishing pixels to perfection", "📊 Optimizing engagement factors"],
         ["🏆 Preparing your masterpiece", "📦 Wrapping it with a bow", "🚚 Getting ready for delivery"]
     ];
-    
-    // Status display elements
+
     const statusEl = document.getElementById('processingStatus');
     const subStatusEl = document.getElementById('processingSubStatus');
-    
-    // Create an element for fun facts if it doesn't exist
+
     let funFactEl = document.getElementById('processingFunFact');
     if (!funFactEl) {
         funFactEl = document.createElement('p');
@@ -379,19 +435,16 @@ function startFakeProcessingAnimation() {
         funFactEl.className = 'mt-3 text-info fst-italic';
         document.querySelector('.fancy-loader-container').after(funFactEl);
     }
-    
-    // Non-linear progress simulation - we'll still use this for timing
+
     const progressStages = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
     let currentStep = 0;
     let currentFact = -1;
-    
-    // Update function - now just handles time-based updates without a progress bar
+
     function updateStage(index) {
         if (index >= progressStages.length) return;
-        
+
         const stage = progressStages[index];
-        
-        // Show a new fun fact at certain points
+
         if (stage >= 4 && currentFact < 0) {
             currentFact = 0;
             showFunFact(0);
@@ -408,8 +461,7 @@ function startFakeProcessingAnimation() {
             currentFact = 4;
             showFunFact(4);
         }
-        
-        // Update status messages at certain thresholds with emoji animations
+
         if (stage >= 5 && currentStep < 1) {
             currentStep = 1;
             statusEl.innerHTML = `${statusMessages[1]} <span class="emoji-bounce">✨</span>`;
@@ -431,19 +483,16 @@ function startFakeProcessingAnimation() {
             updateStep(4);
             rotateSubStatus(4);
         }
-        
-        // Calculate delay for next update - make it more varied and interesting
+
         let delay;
-        if (index < 5) delay = 600 + Math.random() * 400; // Start slow with variation
-        else if (index < 10) delay = 400 + Math.random() * 300; // Speed up with variation
-        else if (index < 15) delay = 300 + Math.random() * 200; // Even faster with variation
-        else delay = 500 + Math.random() * 400; // Slow down at the end with more variation
-        
-        // Schedule next update
+        if (index < 5) delay = 600 + Math.random() * 400;
+        else if (index < 10) delay = 400 + Math.random() * 300;
+        else if (index < 15) delay = 300 + Math.random() * 200;
+        else delay = 500 + Math.random() * 400;
+
         setTimeout(() => updateStage(index + 1), delay);
     }
-    
-    // The rest of your functions can stay the same
+
     function showFunFact(factIndex) {
         funFactEl.style.opacity = 0;
         setTimeout(() => {
@@ -451,27 +500,23 @@ function startFakeProcessingAnimation() {
             funFactEl.style.opacity = 1;
         }, 300);
     }
-    
-    // Mark step as complete with a fun animation
+
     function updateStep(stepIndex) {
         const stepEl = document.getElementById(`step${stepIndex}`);
         if (stepEl) {
             stepEl.innerHTML = stepEl.innerHTML.replace('⏳', '✅');
             stepEl.classList.add('completed');
-            
-            // Add a little animation
             stepEl.style.transform = 'scale(1.05)';
             setTimeout(() => {
                 stepEl.style.transform = 'scale(1)';
             }, 300);
         }
     }
-    
-    // Rotate through substatus messages
+
     function rotateSubStatus(groupIndex) {
         let msgIndex = 0;
         const messages = subStatusMessages[groupIndex];
-        
+
         function updateSubStatus() {
             subStatusEl.innerHTML = messages[msgIndex];
             subStatusEl.style.opacity = 0;
@@ -480,24 +525,20 @@ function startFakeProcessingAnimation() {
             }, 150);
             msgIndex = (msgIndex + 1) % messages.length;
         }
-        
+
         updateSubStatus();
         return setInterval(updateSubStatus, 2500);
     }
-    
-    // Start with first status with bouncing emoji
+
     statusEl.innerHTML = `${statusMessages[0]} <span class="emoji-bounce">🎬</span>`;
     let interval = rotateSubStatus(0);
-    
-    // Start progress updates
+
     updateStage(0);
-    
-    // Stop previous intervals when changing status groups
+
     const oldRotateInterval = interval;
     if (oldRotateInterval) clearInterval(oldRotateInterval);
 }
 
-// Update the CSS styles for our new loader animation
 const style = document.createElement('style');
 style.textContent = `
     .processing-steps {
@@ -519,7 +560,6 @@ style.textContent = `
         background-color: rgba(40, 167, 69, 0.1);
     }
     
-    /* Fancy loader animation */
     .fancy-loader-container {
         height: 30px;
         display: flex;
@@ -574,7 +614,6 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Update the loading steps display with fun emojis
 document.addEventListener('DOMContentLoaded', function() {
     const steps = [
         "⏳ 🎥 Finding perfect background video...",
